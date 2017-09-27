@@ -1,4 +1,5 @@
 <?php
+include_once("view/ErrorView.php");
 include_once("Book.php");
 
 
@@ -22,7 +23,7 @@ class DBModel
 		else {   
             try {
 
-                $db = new PDO('mysql:host=localhost;dbname=BookDB;charset=utf8mb4', 'root', 'clank543');
+                $db = new PDO('mysql:host=localhost;dbname=test;charset=utf8mb4', 'root', 'clank543');
                 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
                 $this->db = $db;      
@@ -38,7 +39,7 @@ class DBModel
     private function validInput($book) {
         $isValid = true;
 
-        if ($book-> title == "") {
+        if ($book-> title == "" || $book-> author == "") {
 
             $isValid = false;
         }
@@ -49,13 +50,17 @@ class DBModel
 
     private function gracefulErrorPage() {
 
-        echo 
-            "<h2>An error has occurred.</h2>
-                </br>
-             <h4>Here, have this graceful error page.</h4>
-                </br>
-                </br>
-             <a href='index.php'> <--- Go back</a>";  
+        $view = new ErrorView();
+        $view->create();
+
+        // The first error screen I had before I realized the functional test failed. 
+        // echo 
+        //     "<h2>An error has occurred.</h2>
+        //         </br>
+        //      <h4>Here, have this graceful error page.</h4>
+        //         </br>
+        //         </br>
+        //      <a href='index.php'> <--- Go back</a>";  
     }
 
     
@@ -68,7 +73,7 @@ class DBModel
 
         $booklist = array();
 
-        foreach ($this->db-> query("SELECT * FROM Books") as $row) {
+        foreach ($this->db-> query("SELECT * FROM book") as $row) {
             
             array_push($booklist, new Book($row['title'], $row['author'], $row['description'], $row['id']));
         }
@@ -84,7 +89,7 @@ class DBModel
     public function getBookById($id) {
 		$book = null;
 
-        foreach ($this->db-> query("SELECT * FROM Books WHERE id=$id") as $row){
+        foreach ($this->db-> query("SELECT * FROM book WHERE id=$id") as $row){
             
             $book = new Book($row['title'], $row['author'], $row['description'], $row['id']);
         }
@@ -102,20 +107,22 @@ class DBModel
         
         if ($this-> validInput($book) == true) {
 
-            $stmt = $this->db-> prepare("INSERT INTO Books  (title,  author,  description)
-                                                     VALUES (?,      ?,       ?)");
+            $stmt = $this->db-> prepare("INSERT INTO book  (title,  author,  description)
+                                                     VALUES(?,      ?,       ?)");
 
             $stmt-> bindValue(1, $book->title);
             $stmt-> bindValue(2, $book->author);
             $stmt-> bindValue(3, $book->description);
-
             $stmt-> execute();
+
+            $book-> id = $this->db-> lastInsertId();
+
             return true;
         }
         else {
 
-            $this-> gracefulErrorPage();
-            return false;
+           $this-> gracefulErrorPage();
+           return false;
         }
     }
 
@@ -125,17 +132,26 @@ class DBModel
      */
     public function modifyBook($book) {
 
-        $stmt = $this->db-> prepare("UPDATE Books set title = :title, 
+    if ($this-> validInput($book) == true) {
+
+        $stmt = $this->db-> prepare("UPDATE book set title = :title, 
                                                       author = :author, 
                                                       description = :description 
-                                                  WHERE id = :id");
+                                                WHERE id = :id");
 
+        $stmt-> bindValue(':id',            $book->id);
         $stmt-> bindValue(':title',         $book->title);
         $stmt-> bindValue(':author',        $book->author);
         $stmt-> bindValue(':description',   $book->description);
-        $stmt-> bindValue(':id',            $book->id);
 
         $stmt-> execute();
+
+      }
+      else {
+
+          $this-> gracefulErrorPage();
+          return false;
+        }
     }
 
     /** Deletes data related to a book from the collection.
@@ -143,9 +159,7 @@ class DBModel
      */
     public function deleteBook($id) {
 
-        $stmt = $this->db-> prepare("DELETE FROM Books WHERE id = :id");
-        //VALUES (:title, :author, :description, :id)
-
+        $stmt = $this->db-> prepare("DELETE FROM book WHERE id = :id");
         $stmt-> bindValue(':id', $id);
 
         $stmt-> execute();

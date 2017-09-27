@@ -169,7 +169,7 @@ class UnitTests extends TestCase
 				$this->assertGreaterThan(0, $book->id);
 				
 				// Was the book added?
-				$this->assertEquals($dbSize + 1, $this->getConnection()->getRowCount(TEST_TABLE_NAME));
+                $this->assertEquals($dbSize + 1, $this->getConnection()->getRowCount(TEST_TABLE_NAME));
 				$dbSize ++;
 
                 // Set the newly assigned id for the test case too before comparing				
